@@ -12,10 +12,10 @@
             display: flex;
             height: 100vh;
             margin: 0;
+            overflow: hidden;
         }
-        /* Cột trái: Cây thư mục bài học */
         .sidebar {
-            width: 320px;
+            width: 340px;
             background: #1e1e1e;
             border-right: 1px solid #333;
             padding: 20px;
@@ -26,28 +26,37 @@
             color: #4CAF50;
             margin-top: 0;
         }
-        .tree-node {
+        ul {
             list-style: none;
             padding-left: 15px;
             margin: 5px 0;
         }
         .folder-title {
             font-weight: bold;
-            cursor: pointer;
             color: #ffb74d;
-            padding: 4px 0;
+            padding: 4px 6px;
+            margin-top: 3px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .folder-title:hover {
+            background: #2a2a2a;
+            color: #ffc107;
         }
         .file-item {
             cursor: pointer;
             color: #90caf9;
-            padding: 4px 0;
+            padding: 5px 8px;
             border-radius: 4px;
+            margin: 2px 0;
         }
-        .file-item:hover, .folder-title:hover {
+        .file-item:hover {
             background: #2d2d2d;
+            color: #fff;
         }
-
-        /* Khu vực bên phải: Màn hình luyện gõ */
+        .nested {
+            display: block;
+        }
         .main-content {
             flex: 1;
             display: flex;
@@ -63,17 +72,19 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             width: 450px;
             text-align: center;
+            position: relative;
         }
         h1 { font-size: 20px; margin-bottom: 15px; color: #4CAF50; }
         .word-display {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
             margin-bottom: 15px;
             letter-spacing: 1px;
+            color: #fff;
         }
         input[type="text"] {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             font-size: 18px;
             background: #2d2d2d;
             border: 1px solid #444;
@@ -88,31 +99,60 @@
         }
         .hint {
             margin-top: 15px;
-            font-size: 14px;
-            color: #888;
+            font-size: 15px;
+            color: #aaa;
+        }
+
+        /* Modal tùy chọn chế độ học */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            display: none;
+        }
+        .modal-box {
+            background: #252525;
+            padding: 30px;
+            border-radius: 8px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            border: 1px solid #444;
+        }
+        .modal-box h3 {
+            color: #4CAF50;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .modal-btn {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 10px 20px;
+            margin: 8px 0;
+            width: 100%;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+        .modal-btn:hover {
+            background: #4CAF50;
+            border-color: #4CAF50;
         }
     </style>
 </head>
 <body>
 
-    <!-- Cột trái: Cây thư mục chọn bài -->
     <div class="sidebar">
         <h2>Danh mục bài học</h2>
-        <div id="treeContainer">
-            <!-- Cây thư mục mô phỏng Anki sẽ hiển thị ở đây -->
-            <ul style="padding-left: 0;">
-                <li class="tree-node">
-                    <div class="folder-title">📁 Pro3M English</div>
-                    <ul>
-                        <li class="tree-node file-item" onclick="loadLesson('Bài 1: Introduction', [ {word: 'hello', meaning: 'xin chào'}, {word: 'welcome', meaning: 'chào mừng'} ])">📄 01_Intro.txt</li>
-                        <li class="tree-node file-item" onclick="loadLesson('Bài 2: Common Verbs', [ {word: 'create', meaning: 'tạo ra'}, {word: 'develop', meaning: 'phát triển'} ])">📄 02_Verbs.txt</li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
+        <div id="treeContainer">Đang tải dữ liệu...</div>
     </div>
 
-    <!-- Khu vực bên phải: Giao diện luyện gõ -->
     <div class="main-content">
         <div class="container">
             <h1 id="currentLessonTitle">Chọn một bài học bên trái để bắt đầu</h1>
@@ -122,25 +162,136 @@
         </div>
     </div>
 
+    <!-- Modal chọn chế độ -->
+    <div class="modal-overlay" id="modeModal">
+        <div class="modal-box">
+            <h3 id="modalLessonName">Chọn chế độ học</h3>
+            <button class="modal-btn" onclick="startLessonWithMode('sequential')">📝 Tuần tự (1 từ lặp 5 lần)</button>
+            <button class="modal-btn" onclick="startLessonWithMode('random')">🔀 Ngẫu nhiên (Random toàn bộ)</button>
+            <button class="modal-btn" style="background: #555; margin-top: 15px;" onclick="closeModal()">Hủy</button>
+        </div>
+    </div>
+
     <script>
         let currentVocabList = [];
+        let rawVocabList = [];
         let currentIndex = 0;
+        let selectedLessonTitle = "";
         
         const targetWordEl = document.getElementById("targetWord");
         const userInputEl = document.getElementById("userInput");
         const hintTextEl = document.getElementById("hintText");
         const currentLessonTitleEl = document.getElementById("currentLessonTitle");
+        const treeContainerEl = document.getElementById("treeContainer");
+        const modeModalEl = document.getElementById("modeModal");
+        const modalLessonNameEl = document.getElementById("modalLessonName");
 
-        function loadLesson(lessonName, vocabArray) {
-            currentLessonTitleEl.textContent = lessonName;
-            currentVocabList = vocabArray;
-            currentIndex = 0;
+        // Tải file JSON động
+        fetch('voca-data.json')
+            .then(response => response.json())
+            .then(data => {
+                treeContainerEl.innerHTML = "";
+                const ul = buildTreeHTML(data);
+                treeContainerEl.appendChild(ul);
+            })
+            .catch(err => {
+                treeContainerEl.innerHTML = "<span style='color:red;'>Lỗi tải dữ liệu bài học!</span>";
+                console.error(err);
+            });
+
+        function buildTreeHTML(nodes) {
+            const ul = document.createElement('ul');
+            const items = Array.isArray(nodes) ? nodes : [nodes];
             
-            if (currentVocabList.length > 0) {
-                userInputEl.disabled = false;
-                userInputEl.focus();
-                showNextWord();
+            items.forEach(node => {
+                if (node.name === "AnkiCSVSource") {
+                    if (node.children && node.children.length > 0) {
+                        const subUl = buildTreeHTML(node.children);
+                        Array.from(subUl.children).forEach(child => ul.appendChild(child));
+                    }
+                    return;
+                }
+
+                const li = document.createElement('li');
+                const vocabData = node.vocab || node.words || node.list || node.data || [];
+                const hasVocab = vocabData.length > 0;
+                const hasChildren = node.children && node.children.length > 0;
+
+                if (hasVocab && !hasChildren) {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = "file-item";
+                    fileItem.textContent = "📄 " + node.name;
+                    fileItem.onclick = () => promptSelectMode(node.name, vocabData);
+                    li.appendChild(fileItem);
+                } else {
+                    const folderTitle = document.createElement('div');
+                    folderTitle.className = "folder-title";
+                    folderTitle.textContent = "📁 " + node.name;
+                    
+                    folderTitle.onclick = (e) => {
+                        e.stopPropagation();
+                        const nestedUl = li.querySelector('.nested');
+                        if (nestedUl) {
+                            nestedUl.style.display = nestedUl.style.display === 'none' ? 'block' : 'none';
+                        }
+                    };
+                    li.appendChild(folderTitle);
+
+                    if (hasChildren) {
+                        const nestedUl = buildTreeHTML(node.children);
+                        nestedUl.className = "nested";
+                        li.appendChild(nestedUl);
+                    }
+                }
+                ul.appendChild(li);
+            });
+            return ul;
+        }
+
+        function promptSelectMode(lessonName, vocabArray) {
+            if (!vocabArray || vocabArray.length === 0) {
+                alert("Bài học này không có từ vựng!");
+                return;
             }
+            selectedLessonTitle = lessonName;
+            rawVocabList = vocabArray;
+            modalLessonNameEl.textContent = lessonName;
+            modeModalEl.style.display = "flex";
+        }
+
+        function closeModal() {
+            modeModalEl.style.display = "none";
+        }
+
+        function startLessonWithMode(mode) {
+            closeModal();
+            currentLessonTitleEl.textContent = selectedLessonTitle;
+            currentIndex = 0;
+
+            let expandedList = [];
+
+            // Nhân bản mỗi từ lên 5 lần
+            rawVocabList.forEach(item => {
+                for (let i = 0; i < 5; i++) {
+                    expandedList.push({ ...item });
+                }
+            });
+
+            if (mode === 'random') {
+                // Xáo trộn toàn bộ danh sách đã nhân bản (Fisher-Yates shuffle)
+                for (let i = expandedList.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [expandedList[i], expandedList[j]] = [expandedList[j], expandedList[i]];
+                }
+            } else {
+                // Not random: Giữ nguyên thứ tự, mỗi từ xuất hiện 5 lần liên tiếp nhau
+                // (ExpandedList đã tự động gom nhóm 5 lần theo từng từ gốc nhờ vòng lặp trên)
+            }
+
+            currentVocabList = expandedList;
+            userInputEl.disabled = false;
+            userInputEl.focus();
+            showNextWord();
         }
 
         function showNextWord() {
@@ -149,8 +300,8 @@
                 hintTextEl.textContent = "Nghĩa: " + currentVocabList[currentIndex].meaning;
                 userInputEl.value = "";
             } else {
-                targetWordEl.textContent = "Hoàn thành!";
-                hintTextEl.textContent = "Bạn đã gõ xong bài này.";
+                targetWordEl.textContent = "Hoàn thành! 🎉";
+                hintTextEl.textContent = "Bạn đã luyện xong bài này.";
                 userInputEl.value = "";
                 userInputEl.disabled = true;
             }
@@ -165,6 +316,5 @@
             }
         });
     </script>
-
 </body>
 </html>
