@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocab Typing Practice - Anki Tree</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+        /* Cột trái: Cây thư mục bài học */
+        .sidebar {
+            width: 320px;
+            background: #1e1e1e;
+            border-right: 1px solid #333;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .sidebar h2 {
+            font-size: 18px;
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .tree-node {
+            list-style: none;
+            padding-left: 15px;
+            margin: 5px 0;
+        }
+        .folder-title {
+            font-weight: bold;
+            cursor: pointer;
+            color: #ffb74d;
+            padding: 4px 0;
+        }
+        .file-item {
+            cursor: pointer;
+            color: #90caf9;
+            padding: 4px 0;
+            border-radius: 4px;
+        }
+        .file-item:hover, .folder-title:hover {
+            background: #2d2d2d;
+        }
+
+        /* Khu vực bên phải: Màn hình luyện gõ */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        .container {
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            width: 450px;
+            text-align: center;
+        }
+        h1 { font-size: 20px; margin-bottom: 15px; color: #4CAF50; }
+        .word-display {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 18px;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 4px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        input[type="text"]:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        .hint {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Cột trái: Cây thư mục chọn bài -->
+    <div class="sidebar">
+        <h2>Danh mục bài học</h2>
+        <div id="treeContainer">
+            <!-- Cây thư mục mô phỏng Anki sẽ hiển thị ở đây -->
+            <ul style="padding-left: 0;">
+                <li class="tree-node">
+                    <div class="folder-title">📁 Pro3M English</div>
+                    <ul>
+                        <li class="tree-node file-item" onclick="loadLesson('Bài 1: Introduction', [ {word: 'hello', meaning: 'xin chào'}, {word: 'welcome', meaning: 'chào mừng'} ])">📄 01_Intro.txt</li>
+                        <li class="tree-node file-item" onclick="loadLesson('Bài 2: Common Verbs', [ {word: 'create', meaning: 'tạo ra'}, {word: 'develop', meaning: 'phát triển'} ])">📄 02_Verbs.txt</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Khu vực bên phải: Giao diện luyện gõ -->
+    <div class="main-content">
+        <div class="container">
+            <h1 id="currentLessonTitle">Chọn một bài học bên trái để bắt đầu</h1>
+            <div class="word-display" id="targetWord">---</div>
+            <input type="text" id="userInput" placeholder="Chọn bài học trước..." disabled autocomplete="off">
+            <div class="hint" id="hintText">Nghĩa: ---</div>
+        </div>
+    </div>
+
+    <script>
+        let currentVocabList = [];
+        let currentIndex = 0;
+        
+        const targetWordEl = document.getElementById("targetWord");
+        const userInputEl = document.getElementById("userInput");
+        const hintTextEl = document.getElementById("hintText");
+        const currentLessonTitleEl = document.getElementById("currentLessonTitle");
+
+        function loadLesson(lessonName, vocabArray) {
+            currentLessonTitleEl.textContent = lessonName;
+            currentVocabList = vocabArray;
+            currentIndex = 0;
+            
+            if (currentVocabList.length > 0) {
+                userInputEl.disabled = false;
+                userInputEl.focus();
+                showNextWord();
+            }
+        }
+
+        function showNextWord() {
+            if (currentIndex < currentVocabList.length) {
+                targetWordEl.textContent = currentVocabList[currentIndex].word;
+                hintTextEl.textContent = "Nghĩa: " + currentVocabList[currentIndex].meaning;
+                userInputEl.value = "";
+            } else {
+                targetWordEl.textContent = "Hoàn thành!";
+                hintTextEl.textContent = "Bạn đã gõ xong bài này.";
+                userInputEl.value = "";
+                userInputEl.disabled = true;
+            }
+        }
+
+        userInputEl.addEventListener("input", (e) => {
+            if (currentVocabList.length === 0) return;
+            
+            if (e.target.value.trim() === currentVocabList[currentIndex].word) {
+                currentIndex++;
+                showNextWord();
+            }
+        });
+    </script>
+
+</body>
+</html>
